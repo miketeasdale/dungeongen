@@ -22,7 +22,7 @@ public class MainApp extends Application {
             Parent root = FXMLLoader.load(getClass().getResource("/views/main.fxml"));
             // Parent root = FXMLLoader.load(url);
             Scene scene = new Scene(root);
-            stage.setTitle("Tic-Tac-Toe");
+            stage.setTitle("Dungeon Generator");
             stage.setScene(scene);
             stage.show();
         } catch (IOException ioe) {
