@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration status="info">
+    <!-- Appenders describes the output destinations for the logs, whether file, console or other.
+     Each appender has a name by which it can be referred to in other parts of the config file. -->
+    <Appenders>
+        <!-- Output to system.out -->
+        <Console name="Console" target="SYSTEM_OUT">
+            <!-- The pattern layout describes the layout of the log messages: what information is included. -->
+            <PatternLayout pattern="%d{dd-MM-yy HH:mm:ss.SSS} %-5level %logger{36} - %msg%n"/>
+        </Console>
+        <!-- Output to a log file. -->
+        <File name="logfile" fileName="/vdts_sysdb/logs/tpapp1.log">
+            <PatternLayout pattern="%d{dd-MM-yy HH:mm:ss.SSS} %-5level %logger{36} - %msg%n"/>
+        </File>
+        <!-- This rolling file creates a series of files named with the date appended. -->
+        <!-- The filename given in each appender must not be the same, or the appender construction
+            will throw an exception at runtime, and fail to be created. -->
+        <RollingFile name="rollingfile" fileName="/vdts_sysdb/logs/tpapp.log"
+                     filePattern="/vdts/logs/tpapp-%d{dd-MM-yy}.log">
+            <PatternLayout pattern="%d{dd-MM-yy HH:mm:ss.SSS} %-5level %logger{36} - %msg%n"/>
+            <Policies>
+                <!-- This policy causes the file to be changed according to the time.
+                Since the above file pattern has day as its first term, it switches every day. -->
+                <TimeBasedTriggeringPolicy/>
+            </Policies>
+            <!-- This default rollover strategy specifies that 3 files will be kept. -->
+            <DefaultRolloverStrategy max="4"/>
+        </RollingFile>
+    </Appenders>
+    <Loggers>
+        <!-- Root level specifies the level at or below which the log messages will print.
+        Appender ref lists all the above appenders that will collect logs at that level. -->
+        <!--
+        <Root level="error">
+        -->
+        <Root level="info">
+            <AppenderRef ref="Console"/>
+            <!--
+            <AppenderRef ref="logfile"/>
+            <AppenderRef ref="rollingfile"/>
+            -->
+        </Root>
+    </Loggers>
+</Configuration>
