@@ -29,26 +29,29 @@ public class MainController {
     private ScrollPane scrollPane;
 
     private static final Logger LOG = LoggerFactory.getLogger(MainController.class);
-    private static final double WIDTH = 32;
-    private static final double HEIGHT = 32;
-    private static final int DWIDTH = 150; // Dungeon width in meters.
-    private static final int DLENGTH = 150; // Dungeon length in meters.
+    private final double WIDTH = 32;
+    private final double HEIGHT = 32;
+    private final int GRIDSIZE = 3; // Meters per grid. 
+    private final int DWIDTH = 50; // Dungeon width in grids.
+    private final int DLENGTH = 50; // Dungeon length in grids.
+    private final int NUMROOMS = 50;
+    private final int NUMTRIES = 3;
 
     GridPane gridPane = null;
 
     @FXML
     private void initialize(){
-        DungeonGen dungeonGen = new DungeonGen(150, 150, 25, 3);
+        DungeonGen dungeonGen = new DungeonGen(DWIDTH, DLENGTH, NUMROOMS, NUMTRIES);
         dungeonGen.generate();
         List<StringBuilder> rowList = dungeonGen.getMapStringList();
         gridPane = new GridPane();
-        for (int x = 0; x < DWIDTH; x++) {
-            for (int y = 0; y < DLENGTH; y++) {
+        for (int x = 0; x < DWIDTH * GRIDSIZE; x++) {
+            for (int y = 0; y < DLENGTH * GRIDSIZE; y++) {
                 Button button = new Button();
                 button.setPrefWidth(WIDTH);
                 button.setPrefHeight(HEIGHT);
                 // Color button according to the contents of this map position.
-                char content = rowList.get(y).charAt(x);
+                char content = rowList.get(y/GRIDSIZE).charAt(x/GRIDSIZE);
                 if (content == DungeonGen.STONE) {
                     button.setStyle("-fx-base: #000000;");
                 }

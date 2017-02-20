@@ -1,5 +1,6 @@
 package com.mteasdale.dungeongen;
 
+import javafx.geometry.Point2D;
 import javafx.geometry.Rectangle2D;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -99,7 +100,7 @@ public class DungeonGen {
         }
         */
 
-        /*
+/*
         // Fill in all of the empty space with mazes.
         for (var y = 1; y < bounds.height; y += 2) {
             for (var x = 1; x < bounds.width; x += 2) {
@@ -108,6 +109,8 @@ public class DungeonGen {
                 _growMaze(pos);
             }
         }
+*/
+        /*
 
         _connectRegions();
         _removeDeadEnds();
@@ -120,8 +123,8 @@ public class DungeonGen {
 
     /// Implementation of the "growing tree" algorithm from here:
     /// http://www.astrolog.org/labyrnth/algrithm.htm.
-    void _growMaze(Vec start) {
-        var cells = <Vec>[];
+    private void growMaze(Point2D start) {
+        List<Point2D> cells = new ArrayList<>();
         var lastDir;
 
         _startRegion();
@@ -162,16 +165,15 @@ public class DungeonGen {
             }
         }
     }
-    */
-
+*/
     // Places rooms.
     private void addRooms() {
         for (int i = 0; i < numRoomTries; i++) {
             LOG.info("Room #{}", i);
             // Pick a random room size.
             // Might want to replace this with a random selection of pre-designed rooms.
-            int xSpan = (int)(Math.random() * 8 + 2.5) * 3; // Should generate a number between 6 and 24 by 3s.
-            int ySpan = (int)(Math.random() * 8 + 2.5) * 3; // Should generate a number between 6 and 24 by 3s.
+            int xSpan = (int)(Math.random() * 7 + 2.5); // Should generate a number between 2 and 8.
+            int ySpan = (int)(Math.random() * 7 + 2.5); // Should generate a number between 2 and 8.
             LOG.info("  Width: {}, Height: {}", xSpan, ySpan);
 
             // Try to place this room.
@@ -215,6 +217,9 @@ public class DungeonGen {
             /*
             _startRegion();
             */
+        }
+        for (StringBuilder s : mapStringList) {
+            LOG.info("Row: {}, Contents: {}", mapStringList.indexOf(s), s.toString());
         }
     }
     
