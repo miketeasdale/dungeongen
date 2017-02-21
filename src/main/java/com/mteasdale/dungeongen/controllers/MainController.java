@@ -1,9 +1,11 @@
 package com.mteasdale.dungeongen.controllers;
 
 import com.mteasdale.dungeongen.DungeonGen;
+import com.mteasdale.dungeongen.TileMap;
 import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
 import javafx.fxml.FXML;
+import javafx.geometry.Point2D;
 import javafx.scene.Node;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
@@ -43,7 +45,7 @@ public class MainController {
     private void initialize(){
         DungeonGen dungeonGen = new DungeonGen(DWIDTH, DLENGTH, NUMROOMS, NUMTRIES);
         dungeonGen.generate();
-        List<StringBuilder> rowList = dungeonGen.getMapStringList();
+        TileMap tileMap = dungeonGen.getTileMap();
         gridPane = new GridPane();
         for (int x = 0; x < DWIDTH * GRIDSIZE; x++) {
             for (int y = 0; y < DLENGTH * GRIDSIZE; y++) {
@@ -51,22 +53,19 @@ public class MainController {
                 button.setPrefWidth(WIDTH);
                 button.setPrefHeight(HEIGHT);
                 // Color button according to the contents of this map position.
-                char content = rowList.get(y/GRIDSIZE).charAt(x/GRIDSIZE);
+                char content = tileMap.getContent(new Point2D(x/GRIDSIZE, y/GRIDSIZE));
                 if (content == DungeonGen.STONE) {
                     button.setStyle("-fx-base: #000000;");
                 }
                 if (content == DungeonGen.OPEN) {
                     button.setStyle("-fx-base: #FFFFFF;");
                 }
-                button.setOnAction(new EventHandler<ActionEvent>() {
-                    @Override
-                    public void handle(ActionEvent event) {
+                button.setOnAction(event -> {
                         Button source = (Button) event.getSource();
                         LOG.info("Button pressed at ({},{})", GridPane.getColumnIndex(source),
                                 GridPane.getRowIndex(source));
                         statLabel.setText("Button pressed at (" + GridPane.getColumnIndex(source) +
                         "," + GridPane.getRowIndex(source) + ")");
-                    }
                 });
                 GridPane.setConstraints(button, x, y);
                 gridPane.getChildren().add(button);

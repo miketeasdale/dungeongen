@@ -5,6 +5,7 @@ import javafx.geometry.Rectangle2D;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.awt.*;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -38,15 +39,14 @@ import java.util.List;
  * of winding corridors.
  */
 public class DungeonGen {
-    private int mapXSpan;
-    private int mapYSpan;
+    private Rectangle2D mapBounds= null;
     private int numRoomTries; // Try to put this many rooms onto the map.
     private int triesPerRoom;
-    private List<StringBuilder> mapStringList = new ArrayList<>();
+    private TileMap tileMap;
 
     public static final char STONE = '0';
     public static final char OPEN = '1';
-    public static final char WALL = '2';
+    public static final char PASSAGE = '2';
     private static final Logger LOG = LoggerFactory.getLogger(DungeonGen.class);
 
     // The inverse chance of adding a connector between two regions that have
@@ -54,62 +54,41 @@ public class DungeonGen {
     // dungeons.
     int extraConnectorChance = 20;
 
-
     int windingPercent = 0;
 
     List<Rectangle2D> roomList = new ArrayList<>();
 
     /// For each open position in the dungeon, the index of the connected region
     /// that that position is a part of.
-    // Array2D<int> _regions;
+    // Regions is another variable similar to the mapStringList.
+    List<List<Integer>> regions = null;
+    //Array2D<int> _regions;
 
     /// The index of the current region being carved.
     int currentRegion = -1;
 
     public DungeonGen(int mapXSpan, int mapYSpan, int numRoomTries, int triesPerRoom) {
-        this.mapXSpan = mapXSpan;
-        this.mapYSpan = mapYSpan;
-        this.numRoomTries = numRoomTries;
-        this.triesPerRoom = triesPerRoom;
-        // Fill the map with stone. We'll carve out rooms and corridors later.
-        for (int y = 0; y < mapYSpan; y++) {
-            StringBuilder rowString = new StringBuilder();
-            for (int x = 0; x < mapXSpan; x++) {
-                rowString.append(STONE);
-            }
-            this.mapStringList.add(rowString);
+        if (mapXSpan % 2 != 0 || mapYSpan % 2 != 0) {
+            LOG.error("Map size must be even numbers.");
+        } else {
+            this.mapBounds = new Rectangle2D(0, 0, mapYSpan, mapXSpan);
+            this.numRoomTries = numRoomTries;
+            this.triesPerRoom = triesPerRoom;
+            this.tileMap = new TileMap((int) mapBounds.getWidth(), (int) mapBounds.getHeight());
         }
     }
 
     public void generate() {
-        /*
-        if (stage.width % 2 == 0 || stage.height % 2 == 0) {
-            throw new ArgumentError("The stage must be odd-sized.");
-        }
-
-        bindStage(stage);
-
-        fill(Tiles.wall);
-        _regions = new Array2D(stage.width, stage.height);
-        */
-
         addRooms();
-        /*
-        for (StringBuilder s : mapStringList) {
-            System.out.println(s.toString());
-        }
-        */
 
-/*
         // Fill in all of the empty space with mazes.
-        for (var y = 1; y < bounds.height; y += 2) {
-            for (var x = 1; x < bounds.width; x += 2) {
-                var pos = new Vec(x, y);
-                if (getTile(pos) != Tiles.wall) continue;
-                _growMaze(pos);
+        for (int y = 1; y < mapBounds.getMaxX(); y += 2) {
+            for (int x = 1; x < mapBounds.getMaxY(); x += 2) {
+                Point2D pos = new Point2D(x, y);
+                if (tileMap.getContent(pos) == STONE) growMaze(pos);
             }
         }
-*/
+
         /*
 
         _connectRegions();
@@ -120,80 +99,82 @@ public class DungeonGen {
     }
     /*
     void onDecorateRoom(Rect room) {}
+    */
 
     /// Implementation of the "growing tree" algorithm from here:
     /// http://www.astrolog.org/labyrnth/algrithm.htm.
     private void growMaze(Point2D start) {
         List<Point2D> cells = new ArrayList<>();
-        var lastDir;
+        // A vector holding the last direction taken by this path.
+        Point2D lastDir = null;
+        // Set up a list of vectors that correspond to the 4 cardinal directions.
+        List<Point2D> directionList = new ArrayList<>();
+        directionList.add(new Point2D(-1, 0));
+        directionList.add(new Point2D(0, -1));
+        directionList.add(new Point2D(1, 0));
+        directionList.add(new Point2D(0, 1));
 
-        _startRegion();
-        _carve(start);
+        startRegion();
+        carve(start, OPEN);
 
         cells.add(start);
-        while (cells.isNotEmpty) {
-            var cell = cells.last;
+        while (!cells.isEmpty()) {
+            // Get last cell added.
+            Point2D cell = cells.get(cells.size() - 1);
 
-            // See which adjacent cells are open.
-            var unmadeCells = <Direction>[];
+            // Make a list of adjacent cells that can be carved out.
+            List<Point2D> unmadeCells = new ArrayList<>();
 
-            for (var dir in Direction.CARDINAL) {
-                if (_canCarve(cell, dir)) unmadeCells.add(dir);
+            for (Point2D dir : directionList) {
+                if (canCarve(cell, dir)) unmadeCells.add(dir);
             }
 
-            if (unmadeCells.isNotEmpty) {
+            if (!unmadeCells.isEmpty()) {
                 // Based on how "windy" passages are, try to prefer carving in the
                 // same direction.
-                var dir;
-                if (unmadeCells.contains(lastDir) && rng.range(100) > windingPercent) {
+                Point2D dir;
+                if (unmadeCells.contains(lastDir) && Rng.getRandomIn(1, 100) > windingPercent) {
                     dir = lastDir;
                 } else {
-                    dir = rng.item(unmadeCells);
+                    // Select a direction from the list of possible ones.
+                    dir = directionList.get(Rng.getRandomIn(0, unmadeCells.size()));
                 }
 
-                _carve(cell + dir);
-                _carve(cell + dir * 2);
+                carve(cell.add(dir), PASSAGE);
+                carve(cell.add(dir.multiply(2)), PASSAGE);
 
-                cells.add(cell + dir * 2);
+                cells.add(cell.add(dir.multiply(2)));
                 lastDir = dir;
             } else {
                 // No adjacent uncarved cells.
-                cells.removeLast();
+                cells.remove(cells.size());
 
                 // This path has ended.
                 lastDir = null;
             }
         }
     }
-*/
+
     // Places rooms.
     private void addRooms() {
         for (int i = 0; i < numRoomTries; i++) {
             LOG.info("Room #{}", i);
             // Pick a random room size.
             // Might want to replace this with a random selection of pre-designed rooms.
-            int xSpan = (int)(Math.random() * 7 + 2.5); // Should generate a number between 2 and 8.
-            int ySpan = (int)(Math.random() * 7 + 2.5); // Should generate a number between 2 and 8.
-            LOG.info("  Width: {}, Height: {}", xSpan, ySpan);
+            Point2D roomSize = makeRoom();
 
             // Try to place this room.
             Rectangle2D room = null;
             for (int t = 0; t < triesPerRoom; t++) {
                 // Pick a location somewhere within the confines of the map with 0 <= x < mapXSpan
-                int x = (int) (Math.random() * (mapXSpan - xSpan));
-                int y = (int) (Math.random() * (mapYSpan - ySpan));
-                room = new Rectangle2D(x, y, (double) xSpan, (double) ySpan);
+                int x = Rng.getRandomIn(1, (int)(mapBounds.getMaxX() - roomSize.getX()) / 2) * 2 + 1;
+                int y = Rng.getRandomIn(1, (int)(mapBounds.getMaxY() - roomSize.getY()) / 2) * 2 + 1;
+                room = new Rectangle2D(x, y, roomSize.getX(), roomSize.getY());
 
                 // See if this position overlaps another room.
                 boolean overlaps = false;
-                // Give this room a 1 grid space around it to separate it from other rooms.
-                double x1 = (x < 1) ? 0 : x - 1;
-                double y1 = (y < 1) ? 0 : y - 1;
-                double xSpan1 = (x < 1) ? xSpan + 1 : xSpan + 2;
-                double ySpan1 = (y < 1) ? ySpan + 1 : ySpan + 2;
-                Rectangle2D roomAndWalls = new Rectangle2D(x1, y1, xSpan1, ySpan1);
                 for (Rectangle2D otherRoom : roomList) {
-                    if (roomAndWalls.intersects(otherRoom)) {
+                    if (room.intersects(otherRoom)) {
                         overlaps = true;
                         break;
                     }
@@ -205,24 +186,37 @@ public class DungeonGen {
                     roomList.add(room);
                     // Mark out this room on the map.
                     for (int row = (int) room.getMinY(); row < (int) room.getMaxY(); row++ ) {
-                        StringBuilder mapRow = mapStringList.get(row);
                         for (int col = (int) room.getMinX(); col < (int) room.getMaxX(); col++) {
-                            mapRow.setCharAt(col, OPEN);
+                            carve(new Point2D(col, row), OPEN);
                         }
                     }
                     break;
                 }
             }
-
-            /*
-            _startRegion();
-            */
-        }
-        for (StringBuilder s : mapStringList) {
-            LOG.info("Row: {}, Contents: {}", mapStringList.indexOf(s), s.toString());
+           startRegion();
         }
     }
     
+    // Returns a 2D vector containing room dimensions.
+    private Point2D makeRoom() {
+        // Pick a random room size. The funny math here does two things:
+        // - It makes sure rooms are odd-sized to line up with maze.
+        // - It avoids creating rooms that are too rectangular: too tall and
+        //   narrow or too wide and flat.
+        // TODO: This isn't very flexible or tunable. Do something better here.
+        int size = Rng.getRandomIn(1, 3) * 2 + 1;
+        int rectangularity = Rng.getRandomIn(0, 1 + size / 2) * 2;
+        int width = size;
+        int height = size;
+        if (Rng.oneIn(2)) {
+            width += rectangularity;
+        } else {
+            height += rectangularity;
+        }
+        LOG.info("  Width: {}, Height: {}", width, height);
+        return new Point2D((double) width, (double) height);
+    }
+
     /*
     void _connectRegions() {
         // Find all of the tiles that can connect two (or more) regions.
@@ -329,31 +323,32 @@ public class DungeonGen {
             }
         }
     }
-
+*/
     /// Gets whether or not an opening can be carved from the given starting
     /// [Cell] at [pos] to the adjacent Cell facing [direction]. Returns `true`
     /// if the starting Cell is in bounds and the destination Cell is filled
-    /// (or out of bounds).</returns>
-    bool _canCarve(Vec pos, Direction direction) {
+    /// (or out of bounds).
+    private Boolean canCarve(Point2D pos, Point2D direction) {
         // Must end in bounds.
-        if (!bounds.contains(pos + direction * 3)) return false;
+        Point2D testPos = pos.add(direction.multiply(3));
+        if (testPos.getX() < 0 || testPos.getX() >= mapBounds.getMaxX() ) return false;
+            if (testPos.getY() < 0 || testPos.getY() >= mapBounds.getMaxY() ) return false;
 
         // Destination must not be open.
-        return getTile(pos + direction * 2) == Tiles.wall;
+        return tileMap.getContent(pos.add(direction.multiply(2))) == STONE;
+    }
+    
+    private void startRegion() {
+        currentRegion++;
     }
 
-    void _startRegion() {
-        _currentRegion++;
+    // Sets the content of a tile, and the region it belongs to.
+    private void carve(Point2D pos, char content) {
+        tileMap.setContent(pos, content);
+        tileMap.setRegion(pos, currentRegion);
     }
 
-    void _carve(Vec pos, [TileType type]) {
-        if (type == null) type = Tiles.floor;
-        setTile(pos, type);
-        _regions[pos] = _currentRegion;
-    }
-    */
-
-    public List<StringBuilder> getMapStringList() {
-        return mapStringList;
+    public TileMap getTileMap(){
+        return tileMap;
     }
 }
